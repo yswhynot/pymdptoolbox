@@ -1,7 +1,11 @@
 import mdptoolbox
 import numpy as _np
+import sys
 
 action = ['north', 'south', 'east', 'west', 'get', 'put']
+
+SIZE = 15
+ACTION = 4
 
 class PositionAction:
     north = True
@@ -12,28 +16,29 @@ class PositionAction:
     is_term = False
 
 class Map:
-    SIZE = 5
-    ACTION = 4
 
     def __init__(self, size):
-        PositionAction pa
-        self._map = [[pa for i in range(SIZE)] for j in range(SIZE)]
+        SIZE = size
+        self._map = [[PositionAction() for i in range(SIZE)] for j in range(SIZE)]
 
         # build outer wall
         for i in range(SIZE):
-            self._map[0, SIZE - 1].east = False
+            self._map[0][i].north = False
+            self._map[i][0].west = False
+            self._map[SIZE - 1][i].south = False
+            self._map[i][SIZE - 1].east = False
 
         # build map with obstacles
         wall_length = (SIZE - 1) / 2
         for i in range(wall_length):
-            self._map[i, (SIZE - 1) / 2].east = False
-            self._map[i, (SIZE - 1) / 2].west = False
+            self._map[i][(SIZE - 1) / 2].east = False
+            self._map[i][(SIZE - 1) / 2].west = False
 
-            self._map(SIZE - 1 - i, 1).east = False
-            self._map(SIZE - 1 - i, 1).west = False
+            self._map[SIZE - 1 - i][1].east = False
+            self._map[SIZE - 1 - i][1].west = False
 
-            self._map(SIZE - 1 - i, SIZE - 2).east = False
-            self._map(SIZE - 1 - i, SIZE - 2).west = False
+            self._map[SIZE - 1 - i][SIZE - 2].east = False
+            self._map[SIZE - 1 - i][SIZE - 2].west = False
 
         # add terminal states
         self._map[0][0].is_term = True
@@ -46,16 +51,20 @@ class Map:
         y = i - x*SIZE
 
         # in sequence: 'north', 'south', 'east', 'west'
-        result = [(x-1)*SIZE + y, (x+1)*SIZE + y, x*SIZE + y-1, x*SIZE + y+1]
+        result = [(x-1)*SIZE + y, (x+1)*SIZE + y, x*SIZE + y+1, x*SIZE + y-1]
+
+        # wrap boulder
+        if result[2] == (SIZE*SIZE):
+            result[2] -= 1
 
         # change validation
-        if !self._map[x][y].north:
+        if not self._map[x][y].north:
             result[0] = i
-        if !self._map[x][y].south:
+        if not self._map[x][y].south:
             result[1] = i
-        if !self._map[x][y].east:
+        if not self._map[x][y].east:
             result[2] = i
-        if !self._map[x][y].west:
+        if not self._map[x][y].west:
             result[3] = i
 
         return result
@@ -86,6 +95,7 @@ class Map:
                         T[j, i, neighbor[k]] += p_dir
                     else:
                         T[j, i, neighbor[k]] += p_wrong_dir
+        # print T[0, :, :]
 
         # Reward matrix
         R = _np.zeros((total_state, ACTION))
@@ -101,8 +111,8 @@ class Map:
         # update neighbor to termination state reward
         result = self.get_neighbor_index(term_state)
         for i in range(ACTION):
-            if result[i] != term_state
-                R[result[i], get_opposite_action(i)] = 1
+            if result[i] != term_state:
+                R[result[i], self.get_opposite_action(i)] = 1
 
         return (T, R)
 
@@ -122,17 +132,45 @@ class Map:
             for y in range(SIZE):
                 current_action = policy_map[x][y]
                 if current_action == 0:
-                    print '^'
+                    sys.stdout.write('^')
                 elif current_action == 1:
-                    print 'v'
+                    sys.stdout.write('v')
                 elif current_action == 2:
-                    print '>'
+                    sys.stdout.write('>')
                 elif current_action == 3:
-                    print '<'
-            print '\n'
+                    sys.stdout.write('<')
+                sys.stdout.write(' ')
+            sys.stdout.write('\n')
+
+    def print_map(self, action):
+        pmap = self._map
+
+        for x in range(SIZE):
+            for y in range(SIZE):
+                if action == 0:
+                    if pmap[x][y].north:
+                        sys.stdout.write('o')
+                    else:
+                        sys.stdout.write('1')
+                if action == 1:
+                    if pmap[x][y].south:
+                        sys.stdout.write('o')
+                    else:
+                        sys.stdout.write('1')
+                if action == 2:
+                    if pmap[x][y].east:
+                        sys.stdout.write('o')
+                    else:
+                        sys.stdout.write('1')
+                if action == 3:
+                    if pmap[x][y].west:
+                        sys.stdout.write('o')
+                    else:
+                        sys.stdout.write('1')
+            sys.stdout.write('\n')
 
         
-def __main__():
-    Map m
+if __name__ == '__main__':
+    m = Map(15)
     m.solve()
     m.display()
