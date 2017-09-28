@@ -2,7 +2,7 @@ import mdptoolbox
 import numpy as _np
 import sys
 
-action = ['north', 'south', 'east', 'west', 'get', 'put']
+action = ['north', 'south', 'east', 'west', 'get', 'put', 'root']
 
 SIZE = 15
 ACTION = 4
@@ -17,8 +17,7 @@ class PositionAction:
 
 class Map:
 
-    def __init__(self, size):
-        SIZE = size
+    def __init__(self):
         self._map = [[PositionAction() for i in range(SIZE)] for j in range(SIZE)]
 
         # build outer wall
@@ -169,8 +168,48 @@ class Map:
                         sys.stdout.write('1')
             sys.stdout.write('\n')
 
+class MDPNode:
+    def __init__(self, name, parent):
+        self.name = name
+        self.childs = []
+
+        if parent is '':
+            return
+        parent.add_child(self)
+        self.parents = [parent]
+
+    def add_child(self, child):
+        self.childs += child
+
+    def add_parent(self, parent):
+        self.parents += parent
+
+    def solve(self, mdp_map):
+        if name is 'nav':
+            mdp_map.solve()
+        else:
+            for child in childs:
+                child.solve()
+
+class AMDP:
+    def __init__(self):
+        self.root = MDPNode('root', '')
+        get_node = MDPNode('get', self.root)
+        put_node = MDPNode('put', self.root)
+        pick_node = MDPNode('pick', get_node)
+        drop_node = MDPNode('drop', put_node)
+        nav_node = MDPNode('nav', put_node)
+        nav_node.add_parent(get_node)
+        self.mdp_map = Map()
+
+    def solve(self, state):
+        self.m.solve()
+
+    def display(self):
+        self.m.display()
+
         
 if __name__ == '__main__':
-    m = Map(15)
-    m.solve()
-    m.display()
+    amdp = AMDP()
+    amdp.solve()
+    amdp.display()
