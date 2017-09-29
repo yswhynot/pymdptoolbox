@@ -33,17 +33,23 @@ class Map:
             self._map[i][(SIZE - 1) / 2].east = False
             self._map[i][(SIZE - 1) / 2].west = False
 
-            self._map[SIZE - 1 - i][1].east = False
-            self._map[SIZE - 1 - i][1].west = False
+            self._map[SIZE - 1 - i][2].east = False
+            self._map[SIZE - 1 - i][2].west = False
 
-            self._map[SIZE - 1 - i][SIZE - 2].east = False
-            self._map[SIZE - 1 - i][SIZE - 2].west = False
+            self._map[SIZE - 1 - i][SIZE - 3].east = False
+            self._map[SIZE - 1 - i][SIZE - 3].west = False
 
         # add terminal states
-        self._map[0][0].is_term = True
+        # self._map[0][0].is_term = True
         # self._map(SIZE - 1, 0).is_term = True
         # self._map(0, SIZE - 1).is_term = True
         # self._map(SIZE - 1, SIZE - 1).is_term = True
+
+    def set_state(self, state):
+        if state is 'get':
+            self._map[0][0].is_term = True
+        elif state is 'put':
+            self._map[SIZE-1][SIZE-1].is_term = True
 
     def get_neighbor_index(self, i):
         x = int(i / SIZE)
@@ -141,6 +147,7 @@ class Map:
                     sys.stdout.write('<')
                 sys.stdout.write(' ')
             sys.stdout.write('\n')
+        # self.print_map(2)
 
     def print_map(self, action):
         pmap = self._map
@@ -167,6 +174,7 @@ class Map:
                         sys.stdout.write('o')
                     else:
                         sys.stdout.write('1')
+                sys.stdout.write(' ')
             sys.stdout.write('\n')
 
 class MDPNode:
@@ -202,13 +210,14 @@ class AMDP:
         put_node = MDPNode('put', self.root)
         pick_node = MDPNode('pick', get_node)
         drop_node = MDPNode('drop', put_node)
-        nav_node = MDPNode('nav', put_node)
-        nav_node.add_parent(get_node)
+        self.nav_node = MDPNode('nav', put_node)
+        self.nav_node.add_parent(get_node)
         
         self.mdp_map = Map()
-        nav_node.add_child(self.mdp_map)
+        self.nav_node.add_child(self.mdp_map)
 
-    def solve(self):
+    def solve(self, action):
+        self.mdp_map.set_state(action)
         self.root.solve()
 
     def display(self):
@@ -217,5 +226,5 @@ class AMDP:
         
 if __name__ == '__main__':
     amdp = AMDP()
-    amdp.solve()
+    amdp.solve('put')
     amdp.display()
