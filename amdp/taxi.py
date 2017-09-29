@@ -127,6 +127,7 @@ class Map:
     def display(self):
         policy_map = self.policy_map
 
+        sys.stdout.write("\n")
         for x in range(SIZE):
             for y in range(SIZE):
                 current_action = policy_map[x][y]
@@ -179,17 +180,20 @@ class MDPNode:
         self.parents = [parent]
 
     def add_child(self, child):
-        self.childs += child
+        self.childs.append(child)
 
     def add_parent(self, parent):
-        self.parents += parent
+        self.parents.append(parent)
 
-    def solve(self, mdp_map):
-        if name is 'nav':
-            mdp_map.solve()
-        else:
-            for child in childs:
-                child.solve()
+    def solve(self):
+        for child in self.childs:
+            child.solve()
+
+    def display(self):
+        sys.stdout.write("\n")
+        sys.stdout.write(self.name)
+        for child in self.childs:
+            child.display()
 
 class AMDP:
     def __init__(self):
@@ -200,13 +204,15 @@ class AMDP:
         drop_node = MDPNode('drop', put_node)
         nav_node = MDPNode('nav', put_node)
         nav_node.add_parent(get_node)
+        
         self.mdp_map = Map()
+        nav_node.add_child(self.mdp_map)
 
-    def solve(self, state):
-        self.m.solve()
+    def solve(self):
+        self.root.solve()
 
     def display(self):
-        self.m.display()
+        self.root.display()
 
         
 if __name__ == '__main__':
