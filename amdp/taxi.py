@@ -1,5 +1,6 @@
 import mdptoolbox
 import numpy as _np
+import random
 import sys
 
 action = ['north', 'south', 'east', 'west', 'get', 'put', 'root']
@@ -46,10 +47,14 @@ class Map:
         # self._map(SIZE - 1, SIZE - 1).is_term = True
 
     def set_state(self, state):
-        if state is 'get':
+        if state == 'get':
             self._map[0][0].is_term = True
-        elif state is 'put':
-            self._map[SIZE-1][SIZE-1].is_term = True
+        elif state == 'put':
+            rand = random.uniform(0, 1)
+            if rand < 0.7:
+                self._map[SIZE-1][SIZE-1].is_term = True
+            else:
+                self._map[0][SIZE-1].is_term = True
 
     def get_neighbor_index(self, i):
         x = int(i / SIZE)
@@ -85,7 +90,7 @@ class Map:
             return 2
 
     def generate_mdp(self):
-        p_wrong_dir = 0.1
+        p_wrong_dir = 0.2/3
         p_dir = 1 - 3*p_wrong_dir
         total_state = SIZE*SIZE
 
@@ -226,5 +231,5 @@ class AMDP:
         
 if __name__ == '__main__':
     amdp = AMDP()
-    amdp.solve('put')
+    amdp.solve(sys.argv[1])
     amdp.display()
