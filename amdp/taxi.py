@@ -7,6 +7,7 @@ action = ['north', 'south', 'east', 'west', 'get', 'put', 'root']
 
 SIZE = 15
 ACTION = 4
+NUM = 2
 
 class PositionAction:
     north = True
@@ -92,7 +93,7 @@ class Map:
     def generate_mdp(self):
         p_wrong_dir = 0.2/3
         p_dir = 1 - 3*p_wrong_dir
-        total_state = SIZE*SIZE
+        total_state = SIZE*SIZE*SIZE*SIZE
 
         # Transition matrix
         T = _np.zeros((ACTION, total_state, total_state))
