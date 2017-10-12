@@ -141,15 +141,15 @@ class Map:
                             index_r = r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1]
                             if a1 == k1 and a2 == k2:
                                 T[a1*ACTION + a2, current_state, index_r] += p_dir*p_dir
-                            elif (a1 == k1 and a2 != k2) or (a1 != k1 and a2 == k2):
-                                T[a1*ACTION + a2, current_state, index_r] += p_dir * (1 - p_wrong_dir)
-                            else:
+                            elif a1 != k1 and a2 != k2:
                                 T[a1*ACTION + a2, current_state, index_r] += p_wrong_dir * p_wrong_dir
+                            else:
+                                T[a1*ACTION + a2, current_state, index_r] += p_dir * p_wrong_dir 
 
-        print T[0, :, :]
+        print T[1, 0, :]
 
         # Reward matrix
-        R = _np.zeros((total_state, ACTION))
+        R = _np.zeros((total_state, ACTION*ACTION))
         # find the termination state
         term_state = []
         for state in states:
@@ -158,13 +158,14 @@ class Map:
                 term_state += [(x1, y1, x2, y2)] 
 
         # update neighbor to termination state reward
-        for s in term_state:
-            for i in range(ACTION):
-                for idx in range(2):
-                    r = self.get_index(x1, y1, x2, y2, i, idx)
-                    if r:
-                        R[r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1], self.get_opposite_action(i)] = 1
-
+        for state in term_state:
+            (x1, y1, x2, y2) = state
+            for a1 in range(ACTION):
+                for a2 in range(ACTION):
+                    r = self.get_joint_neighbor((x1, y1), (x2, y2), a1, a2)
+                    index_r = r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1]
+                    oppo_action = self.get_opposite_action(a1)*ACTION+ self.get_opposite_action(a2)
+                    R[index_r, oppo_action] = 1
         return (T, R)
 
     def solve(self):
