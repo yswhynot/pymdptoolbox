@@ -5,7 +5,7 @@ import sys
 
 action = ['north', 'south', 'east', 'west', 'get', 'put', 'root']
 
-SIZE = 15
+SIZE = 5
 ACTION = 4
 NUM = 2
 
@@ -90,40 +90,80 @@ class Map:
         if a == 3:
             return 2
 
+    def get_neighbor(self, x, y, action):
+        result = (x, y)
+        if action == 0:
+            if self._map[x][y].north:
+                result = (x-1, y)
+        elif action == 1:
+            if self._map[x][y].south:
+                result = (x+1, y)
+        elif action == 2:
+            if self._map[x][y].east:
+                result = (x, y+1)
+        elif action == 3:
+            if self._map[x][y].west:
+                result = (x, y-1)
+        return result
+
+    def get_joint_neighbor(self, s1, s2, a1, a2):
+        result = [s1, s2]
+        n1 = self.get_neighbor(s1[0], s1[1], a1)
+        n2 = self.get_neighbor(s2[0], s2[1], a2)
+        if n1 == n2:
+            result = [n1, s2]
+        else:
+            result = [n1, n2]
+        return result
+
+
     def generate_mdp(self):
         p_wrong_dir = 0.2/3
         p_dir = 1 - 3*p_wrong_dir
         total_state = SIZE*SIZE*SIZE*SIZE
 
         # Transition matrix
-        T = _np.zeros((ACTION, total_state, total_state))
-        for i in range(total_state):
-            neighbor = self.get_neighbor_index(i)
+        T = _np.zeros((ACTION*ACTION, total_state, total_state))
+        states = []
+        for x1 in range(SIZE):
+            for y1 in range(SIZE):
+                for x2 in range(SIZE):
+                    for y2 in range(SIZE):
+                        states += [(x1, y1, x2, y2)]
+        for state in states:
+            (x1, y1, x2, y2) = state
+            current_state = x1*SIZE*SIZE*SIZE + y1*SIZE*SIZE + x2*SIZE + y2
+            for a1 in range(ACTION):
+                for a2 in range(ACTION):
+                    for k1 in range(ACTION):
+                        for k2 in range(ACTION):
+                            r = self.get_joint_neighbor((x1, y1), (x2, y2), a1, a2)
+                            index_r = r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1]
+                            if a1 == k1 and a2 == k2:
+                                T[a1*ACTION + a2, current_state, index_r] += p_dir*p_dir
+                            elif (a1 == k1 and a2 != k2) or (a1 != k1 and a2 == k2):
+                                T[a1*ACTION + a2, current_state, index_r] += p_dir * (1 - p_wrong_dir)
+                            else:
+                                T[a1*ACTION + a2, current_state, index_r] += p_wrong_dir * p_wrong_dir
 
-            for j in range(ACTION):
-                for k in range(ACTION):
-                    if j == k:
-                        T[j, i, neighbor[k]] += p_dir
-                    else:
-                        T[j, i, neighbor[k]] += p_wrong_dir
-        # print T[0, :, :]
+        print T[0, :, :]
 
         # Reward matrix
         R = _np.zeros((total_state, ACTION))
         # find the termination state
-        term_state = -1
-        for x in range(SIZE):
-            for y in range(SIZE):
-                if self._map[x][y].is_term:
-                    term_state = x*SIZE + y
-                    break
-            if term_state != -1:
-                break
+        term_state = []
+        for state in states:
+            (x1, y1, x2, y2) = state
+            if self._map[x1][y1].is_term or self._map[x2][y2].is_term:
+                term_state += [(x1, y1, x2, y2)] 
+
         # update neighbor to termination state reward
-        result = self.get_neighbor_index(term_state)
-        for i in range(ACTION):
-            if result[i] != term_state:
-                R[result[i], self.get_opposite_action(i)] = 1
+        for s in term_state:
+            for i in range(ACTION):
+                for idx in range(2):
+                    r = self.get_index(x1, y1, x2, y2, i, idx)
+                    if r:
+                        R[r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1], self.get_opposite_action(i)] = 1
 
         return (T, R)
 
