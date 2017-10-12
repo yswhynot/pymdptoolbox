@@ -124,20 +124,20 @@ class Map:
 
         # Transition matrix
         T = _np.zeros((ACTION*ACTION, total_state, total_state))
-        states = []
+        self.states = []
         for x1 in range(SIZE):
             for y1 in range(SIZE):
                 for x2 in range(SIZE):
                     for y2 in range(SIZE):
-                        states += [(x1, y1, x2, y2)]
-        for state in states:
+                        self.states += [(x1, y1, x2, y2)]
+        for state in self.states:
             (x1, y1, x2, y2) = state
             current_state = x1*SIZE*SIZE*SIZE + y1*SIZE*SIZE + x2*SIZE + y2
             for a1 in range(ACTION):
                 for a2 in range(ACTION):
                     for k1 in range(ACTION):
                         for k2 in range(ACTION):
-                            r = self.get_joint_neighbor((x1, y1), (x2, y2), a1, a2)
+                            r = self.get_joint_neighbor((x1, y1), (x2, y2), k1, k2)
                             index_r = r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1]
                             if a1 == k1 and a2 == k2:
                                 T[a1*ACTION + a2, current_state, index_r] += p_dir*p_dir
@@ -145,14 +145,13 @@ class Map:
                                 T[a1*ACTION + a2, current_state, index_r] += p_wrong_dir * p_wrong_dir
                             else:
                                 T[a1*ACTION + a2, current_state, index_r] += p_dir * p_wrong_dir 
-
-        print T[1, 0, :]
+        #  print T[1, 0, :]
 
         # Reward matrix
         R = _np.zeros((total_state, ACTION*ACTION))
         # find the termination state
         term_state = []
-        for state in states:
+        for state in self.states:
             (x1, y1, x2, y2) = state
             if self._map[x1][y1].is_term or self._map[x2][y2].is_term:
                 term_state += [(x1, y1, x2, y2)] 
@@ -175,26 +174,40 @@ class Map:
 
         # parse policy
         policy = vi.policy
-        self.policy_map = [[policy[x*SIZE + y] for y in range(SIZE)] for x in range(SIZE)]
+        self.policy_map = [[[[policy[x1*SIZE*SIZE*SIZE + y1*SIZE*SIZE + x2*SIZE + y2] for y2 in range(SIZE)] for x2 in range(SIZE)] for y1 in range(SIZE)] for x1 in range(SIZE)]
+
+    def display_action(self, a, action_num):
+        print "\naction number: %d" % action_num
+        count = 0
+        for current_action in a:
+            if current_action == 0:
+                sys.stdout.write('^')
+            elif current_action == 1:
+                sys.stdout.write('v')
+            elif current_action == 2:
+                sys.stdout.write('>')
+            elif current_action == 3:
+                sys.stdout.write('<')
+            sys.stdout.write(' ')
+            count += 1
+            if count > SIZE*SIZE:
+                sys.stdout.write('\n')
+                count = 0
 
     def display(self):
         policy_map = self.policy_map
 
-        sys.stdout.write("\n")
-        for x in range(SIZE):
-            for y in range(SIZE):
-                current_action = policy_map[x][y]
-                if current_action == 0:
-                    sys.stdout.write('^')
-                elif current_action == 1:
-                    sys.stdout.write('v')
-                elif current_action == 2:
-                    sys.stdout.write('>')
-                elif current_action == 3:
-                    sys.stdout.write('<')
-                sys.stdout.write(' ')
-            sys.stdout.write('\n')
-        # self.print_map(2)
+        action_list1 = []
+        action_list2 = []
+        for state in self.states:
+            (x1, y1, x2, y2) = state
+            current_action = policy_map[x1][y1][x2][y2]
+            a2 = current_action % ACTION
+            a1 = (current_action - a2) / ACTION
+            action_list1 += [a1]
+            action_list2 += [a2]
+        self.display_action(action_list1, 0)
+        self.display_action(action_list2, 1)
 
     def print_map(self, action):
         pmap = self._map
