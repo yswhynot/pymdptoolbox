@@ -151,7 +151,6 @@ class Map:
                                 T[a1*ACTION + a2, current_state, index_r] += p_wrong_dir * p_wrong_dir
                             else:
                                 T[a1*ACTION + a2, current_state, index_r] += p_dir * p_wrong_dir 
-
         #  print T[1, 0, :]
 
         # Reward matrix
