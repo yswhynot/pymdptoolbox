@@ -2,11 +2,13 @@ import mdptoolbox
 import numpy as _np
 import random
 import sys
+import copy
+import time
 
 action = ['north', 'south', 'east', 'west', 'get', 'put', 'root']
 
 SIZE = 5
-ACTION = 4
+ACTION = 5
 NUM = 2
 
 class PositionAction:
@@ -89,6 +91,8 @@ class Map:
             return 3
         if a == 3:
             return 2
+        if a == 4:
+            return 4
 
     def get_neighbor(self, x, y, action):
         result = (x, y)
@@ -104,6 +108,8 @@ class Map:
         elif action == 3:
             if self._map[x][y].west:
                 result = (x, y-1)
+        elif action == 4:
+            result = (x, y)
         return result
 
     def get_joint_neighbor(self, s1, s2, a1, a2):
@@ -118,26 +124,26 @@ class Map:
 
 
     def generate_mdp(self):
-        p_wrong_dir = 0.2/3
-        p_dir = 1 - 3*p_wrong_dir
+        p_wrong_dir = 0.2/4
+        p_dir = 1 - 4*p_wrong_dir
         total_state = SIZE*SIZE*SIZE*SIZE
 
         # Transition matrix
         T = _np.zeros((ACTION*ACTION, total_state, total_state))
-        states = []
+        self.states = []
         for x1 in range(SIZE):
             for y1 in range(SIZE):
                 for x2 in range(SIZE):
                     for y2 in range(SIZE):
-                        states += [(x1, y1, x2, y2)]
-        for state in states:
+                        self.states += [(x1, y1, x2, y2)]
+        for state in self.states:
             (x1, y1, x2, y2) = state
             current_state = x1*SIZE*SIZE*SIZE + y1*SIZE*SIZE + x2*SIZE + y2
             for a1 in range(ACTION):
                 for a2 in range(ACTION):
                     for k1 in range(ACTION):
                         for k2 in range(ACTION):
-                            r = self.get_joint_neighbor((x1, y1), (x2, y2), a1, a2)
+                            r = self.get_joint_neighbor((x1, y1), (x2, y2), k1, k2)
                             index_r = r[0][0]*SIZE*SIZE*SIZE + r[0][1]*SIZE*SIZE + r[1][0]*SIZE + r[1][1]
                             if a1 == k1 and a2 == k2:
                                 T[a1*ACTION + a2, current_state, index_r] += p_dir*p_dir
@@ -146,13 +152,13 @@ class Map:
                             else:
                                 T[a1*ACTION + a2, current_state, index_r] += p_dir * p_wrong_dir 
 
-        print T[1, 0, :]
+        #  print T[1, 0, :]
 
         # Reward matrix
         R = _np.zeros((total_state, ACTION*ACTION))
         # find the termination state
         term_state = []
-        for state in states:
+        for state in self.states:
             (x1, y1, x2, y2) = state
             if self._map[x1][y1].is_term or self._map[x2][y2].is_term:
                 term_state += [(x1, y1, x2, y2)] 
@@ -175,26 +181,41 @@ class Map:
 
         # parse policy
         policy = vi.policy
-        self.policy_map = [[policy[x*SIZE + y] for y in range(SIZE)] for x in range(SIZE)]
+        self.policy_map = [[[[policy[x1*SIZE*SIZE*SIZE + y1*SIZE*SIZE + x2*SIZE + y2] for y2 in range(SIZE)] for x2 in range(SIZE)] for y1 in range(SIZE)] for x1 in range(SIZE)]
+
+    def get_policy_char(self, a):
+        if a == 0:
+            return '^'
+        elif a == 1:
+            return 'v'
+        elif a == 2:
+            return '>'
+        elif a == 3:
+            return '<'
+        elif a == 4:
+            return '.'
+
+    def display_action(self, a1, a2):
+        for x1 in range(SIZE):
+            for y1 in range(SIZE):
+                print "a1: (%d, %d)" % (x1, y1)
+                for x2 in range(SIZE):
+                    print a1[x1][y1][x2]
+                print "a2:"
+                for x2 in range(SIZE):
+                    print a2[x1][y1][x2]
 
     def display(self):
-        policy_map = self.policy_map
+        policy_map1 = copy.deepcopy(self.policy_map)
+        policy_map2 = copy.deepcopy(self.policy_map)
 
-        sys.stdout.write("\n")
-        for x in range(SIZE):
-            for y in range(SIZE):
-                current_action = policy_map[x][y]
-                if current_action == 0:
-                    sys.stdout.write('^')
-                elif current_action == 1:
-                    sys.stdout.write('v')
-                elif current_action == 2:
-                    sys.stdout.write('>')
-                elif current_action == 3:
-                    sys.stdout.write('<')
-                sys.stdout.write(' ')
-            sys.stdout.write('\n')
-        # self.print_map(2)
+        for state in self.states:
+            (x1, y1, x2, y2) = state
+            a2 = self.policy_map[x1][y1][x2][y2] % ACTION
+            a1 = (self.policy_map[x1][y1][x2][y2] - a2) / ACTION
+            policy_map1[x2][y2][x1][y1] = self.get_policy_char(a1)
+            policy_map2[x1][y1][x2][y2] = self.get_policy_char(a2)
+        self.display_action(policy_map1, policy_map2)
 
     def print_map(self, action):
         pmap = self._map
