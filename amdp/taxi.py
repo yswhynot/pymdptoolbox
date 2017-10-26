@@ -191,46 +191,66 @@ class Map:
 class MDPNode:
     def __init__(self, encode):
         self.encode = encode
+        self.locatiton = (0, 0)
+        self.edge_list = []
 
 class MDPEdge:
-    def __init__(self, head, tail, start, term):
+    def __init__(self, head, tail, start, mid, term):
         self.head = head
         self.tail = tail
         self.map = Map()
+        self.start = start
+        self.mid = mid
+        self.term = term
 
-        self.map.set_term(tail.term)
+    def get_cost(self):
+        self.map.set_term(mid)
         self.map.solve()
-        self.value_map = self.map.value_map
-        self.cost = self.value_map[start[0]][start[1]]
+        value_map = self.map.value_map
+        c1 = value_map[self.start[0]][self.start[1]]
+
+        self.map.set_term(term)
+        self.map.solve()
+        value_map = self.map.value_map
+        c2 = value_map[self.mid[0]][self.mid[1]]
+        self.cost = c1 + c2
+        return self.cost
 
 class AMDP:
     def __init__(self):
         self.map = Map()
-        self.node_list = []
-        self.edge_list = []
+        self.code_list = []
+        self.pas_count = 3
+        self.root = None
+        self.pas_start = [(0, 0), (0, 14), (14, 0)]
+        self.pas_end = [(14, 14), (14, 0), (0, 0)]
+
+    def create_child(self, parent):
+        if parent.encode.uint == (2**self.pas_count - 1):
+            return
+        for i in range(self.pas_count):
+            if parent.encode.bin[i] == '1':
+                continue
+            child_code = BitArray(parent.encode)
+            child_code[i] = 1
+            child= MDPNode(child_code)
+            child.location = self.pas_end[i]
+            edge = MDPEdge(parent, child, parent.location, self.pas_start[i], child.location)
+            child.edge_list += [edge]
+            self.create_child(child)
 
     def build_graph(self):
-        taxi_start = [5, 7]
-        pas_start = [(0, 0), (0, 14), (14, 0)]
-        pas_end = [(14, 14), (14, 0), (0, 0)]
-        pas_count = 3
+        taxi_start = (5, 7)
+        pas_count = self.pas_count
         for i in range(2**pas_count):
             encode = BitArray(uint=i, length=pas_count)
-            node = MDPNode(encode)
-            self.node_list += [node]
+            self.code_list += [encode]
         
         # build the graph
-        for i in range(2**pas_count):
-            parent = self.node_list[i]
-            # find child index
-            for j in range(pas_count):
-                if parent.encode.bin[j] == '1':
-                    continue
-                child_code = BitArray(parent.encode)
-                child_code[j] = 1
-                child = self.node_list[child_code.uint]
-                edge = MDPEdge(parent, child, 0, pas_end[j])
-                self.edge_list += [edge]
+        self.root = MDPNode(self.code_list[0])
+        self.root.location = taxi_start
+        # create children dfs
+        self.create_child(self.root)
 
     def solve(self):
         self.map.set_term([0, 0]);
@@ -242,5 +262,6 @@ class AMDP:
         
 if __name__ == '__main__':
     amdp = AMDP()
-    amdp.solve()
-    amdp.display()
+    amdp.build_graph()
+    #  amdp.solve()
+    #  amdp.display()
