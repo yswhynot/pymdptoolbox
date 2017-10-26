@@ -196,26 +196,29 @@ class MDPNode:
         self.id = -1
 
 class MDPEdge:
-    def __init__(self, head, tail, start, mid, term):
-        self.head = head
-        self.tail = tail
+    def __init__(self, pid, cid, start, mid, term):
+        self.parent_id = pid
+        self.child_id = cid
         self.map = Map()
         self.start = start
         self.mid = mid
         self.term = term
+        self.reward = 0
 
-    def get_cost(self):
-        self.map.set_term(mid)
+    def get_reward(self):
+        if self.reward == -1:
+            return -1
+        self.map.set_term(self.mid)
         self.map.solve()
         value_map = self.map.value_map
-        c1 = value_map[self.start[0]][self.start[1]]
+        r1 = value_map[self.start[0]][self.start[1]]
 
-        self.map.set_term(term)
+        self.map.set_term(self.term)
         self.map.solve()
         value_map = self.map.value_map
-        c2 = value_map[self.mid[0]][self.mid[1]]
-        self.cost = c1 + c2
-        return self.cost
+        r2 = value_map[self.mid[0]][self.mid[1]]
+        self.reward = r1 + r2 
+        return self.reward
 
 class AMDP:
     def __init__(self):
@@ -230,23 +233,30 @@ class AMDP:
     def create_child(self, parent):
         if parent.encode.uint == (2**self.pas_count - 1):
             child_term = BitArray(uint = (2**self.pas_count-1), length = self.pas_count)
-            self.node_list += [child_term]
+            self.node_list += [MDPNode(child_term)]
             return
         for i in range(self.pas_count):
             if parent.encode.bin[i] == '1':
+                child = MDPNode(parent.encode)
+                child.id = parent.id 
+                child.location = parent.location
+                edge = MDPEdge(parent.id, child.id, parent.location, parent.location, child.location)
+                edge.reward = -1
+                parent.edge_list += [edge]
                 continue
+                
             child_code = BitArray(parent.encode)
             child_code[i] = 1
             child= MDPNode(child_code)
-            child.location = self.pas_end[i]
-            edge = MDPEdge(parent, child, parent.location, self.pas_start[i], child.location)
-            child.edge_list += [edge]
             child.id = len(self.node_list)
+            child.location = self.pas_end[i]
+            edge = MDPEdge(parent.id, child.id, parent.location, self.pas_start[i], child.location)
+            parent.edge_list += [edge]
             self.node_list += [child]
             self.create_child(child)
 
     def build_graph(self):
-        taxi_start = (5, 7)
+        taxi_start = (5, 5)
         pas_count = self.pas_count
         for i in range(2**pas_count):
             encode = BitArray(uint=i, length=pas_count)
@@ -264,18 +274,39 @@ class AMDP:
         total_state = len(self.node_list)
         T = _np.zeros((self.pas_count, total_state, total_state))
         for i in range(total_state):
-
+            for a in range(self.pas_count):
+                if len(self.node_list[i].edge_list) == 0:
+                    T[a, i, i] = 1
+                    continue
+                cid = self.node_list[i].edge_list[a].child_id
+                T[a, i, cid] = 1
+        self.T = T
+        
+        # build reward matrix
+        R = _np.zeros((total_state, self.pas_count))
+        for i in range(total_state):
+            for a in range(self.pas_count):
+                if len(self.node_list[i].edge_list) == 0:
+                    continue
+                edge = self.node_list[i].edge_list[a] 
+                if edge.reward == -1:
+                    continue
+                R[i, a] = edge.get_reward()
+        self.R = R
 
     def solve(self):
-        self.map.set_term([0, 0]);
-        self.map.solve()
+        vi = mdptoolbox.mdp.ValueIteration(self.T, self.R, 0.95)
+        vi.run()
+        policy = vi.policy
+        self.policy = policy
 
     def display(self):
-        self.map.display()
+        print self.policy
 
         
 if __name__ == '__main__':
     amdp = AMDP()
     amdp.build_graph()
-    #  amdp.solve()
-    #  amdp.display()
+    amdp.generate_mdp()
+    amdp.solve()
+    amdp.display()
