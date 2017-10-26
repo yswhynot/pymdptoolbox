@@ -297,6 +297,7 @@ class AMDP:
     def solve(self):
         vi = mdptoolbox.mdp.ValueIteration(self.T, self.R, 0.95)
         vi.run()
+
         policy = vi.policy
         self.policy = policy
 
