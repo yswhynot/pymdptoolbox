@@ -2,7 +2,7 @@ import mdptoolbox
 import numpy as _np
 import random
 import sys
-from bitarray import bitarray
+from bitstring import BitArray
 
 action = ['north', 'south', 'east', 'west', 'get', 'put', 'root']
 
@@ -201,21 +201,36 @@ class MDPEdge:
         self.map.set_term(tail.term)
         self.map.solve()
         self.value_map = self.map.value_map
-        self.cost = self.value_map[head.term[0]][head.term[1]]
+        self.cost = self.value_map[start[0]][start[1]]
 
 class AMDP:
     def __init__(self):
         self.map = Map()
+        self.node_list = []
+        self.edge_list = []
 
     def build_graph(self):
         taxi_start = [5, 7]
-        pas_count = 2
+        pas_start = [(0, 0), (0, 14), (14, 0)]
+        pas_end = [(14, 14), (14, 0), (0, 0)]
+        pas_count = 3
         for i in range(2**pas_count):
-            encode = bitarray(i)
-            if i == 0:
-                self.root = MDPNode(encode, taxi_start)
-                continue
+            encode = BitArray(uint=i, length=pas_count)
             node = MDPNode(encode)
+            self.node_list += [node]
+        
+        # build the graph
+        for i in range(2**pas_count):
+            parent = self.node_list[i]
+            # find child index
+            for j in range(pas_count):
+                if parent.encode.bin[j] == '1':
+                    continue
+                child_code = BitArray(parent.encode)
+                child_code[j] = 1
+                child = self.node_list[child_code.uint]
+                edge = MDPEdge(parent, child, 0, pas_end[j])
+                self.edge_list += [edge]
 
     def solve(self):
         self.map.set_term([0, 0]);
